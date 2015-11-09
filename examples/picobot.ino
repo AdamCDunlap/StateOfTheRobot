@@ -81,9 +81,7 @@ void scanBearSensor() {
     wait_for(bot.bearSensorInPlace());
 }
 
-void background_loop() {
-    if (state == GoNorth) {
-        // While moving north, we should check for polar bears
-        checkForBears();
-    }
+void background_GoNorth() {
+    // While moving north, we should check for polar bears
+    checkForBears();
 }
