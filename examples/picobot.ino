@@ -16,11 +16,18 @@ bool senseDir(unsigned dir) {
     return bot.getDist() < 100;
 }
 
-void setup() {
+define_interrupt(bot.getBumpSensor(), RISING_EDGE) {
+    if (state != Confused) {
+        Serial.println("Hit something! Was in state " + last_state());
+    }
+    set_state(Confused);
+}
+
+void initialize() {
     pinMode(13, OUTPUT);
 }
 
-void loop() {
+void main_loop() {
     if (state == Start) {
         bot.move(0, 1);
         if (bot.senseDir(Dir::EAST)) {
@@ -48,5 +55,30 @@ void loop() {
         wait(500_ms);
         digitalWrite(13, HIGH);
         wait(500_ms);
+    } else if (state == Panic) {
+        every(100_ms) {
+             Serial.println("BEAR!");
+        }
+    }
+}
+
+void checkForBears() {
+    scanBearSensor();
+    if (bot.seeBear()) {
+        state = Panic;
+    }
+}
+
+void scanBearSensor() {
+    bot.moveBearSensor(EAST);
+    wait_for(bot.bearSensorInPlace());
+    bot.moveBearSensor(WEST);
+    wait_for(bot.bearSensorInPlace());
+}
+
+void background_loop() {
+    if (state == GoNorth) {
+        // While moving north, we should check for polar bears
+        checkForBears();
     }
 }
