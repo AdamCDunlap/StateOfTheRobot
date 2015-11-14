@@ -2,12 +2,15 @@
 LINK.o = $(LINK.cc)
 
 INCLUDEFLAGS = -I ~/docs/Rover5/library/
-CXXFLAGS = $(INCLUDEFLAGS) -std=c++11 -g -Wall -Wextra
+CXXFLAGS = $(INCLUDEFLAGS) -std=c++14 -g -Wall -Wextra -I ..
 
-all: picobot.o
+all: picobot
+
+picobot: picobot.o ../SOTR/StateOfTheRobot.o Rover5.o
 
 clean:
 	rm -f picobot *.o
 
-picobot.o: picobot.cc /home/adam/docs/Rover5/library/Rover5.h \
- StateOfTheRobot.h StateOfTheRobot-private.h
+picobot.o: picobot.cpp ../SOTR/StateOfTheRobot.h
+../SOTR/StateOfTheRobot.o: 	../SOTR/StateOfTheRobot.cpp \
+							../SOTR/StateOfTheRobot.h
