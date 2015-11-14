@@ -2,6 +2,19 @@
 #define STATEOFTHEROBOT_H
 #include <string>
 #include <functional>
+#include <deque>
+
+using _sotr_print_err_func = std::function<void(const char*)>;
+_sotr_print_err_func _sotr_print_err;
+struct _sotr_register_err_func {
+    _sotr_register_err_func(_sotr_print_err_func err_print_func) {
+        _sotr_print_err = err_print_func;
+    }
+};
+#define set_error_func(ef) _sotr_register_err_func _err_func_def(ef)
+
+using _sotr_flag_func = std::function<bool(void)>;
+using _sotr_do_func = std::function<void(void)>;
 
 class _sotr_time {
 public:
@@ -21,15 +34,17 @@ private:
 };
 
 _sotr_time operator "" _ms(unsigned long long int t) {
-    return ms(t);
+    return _sotr_time::ms(t);
 }
 
 _sotr_time tm_in_state();
 
 void wait(_sotr_time);
 
-template<class WaitFunc>
-void wait_for(WaitFunc);
+void wait_for(_sotr_flag_func);
+
+// TODO
+#define every(tm_inc) for(;;)
 
 class dumb_state_name_wrapper {
     static std::string get(int e) {
@@ -53,26 +68,42 @@ public:
     operator std::string() const { return enum_name_wrapper::get(cEnum_); }
 };
 
-#define define_states(...) int _DefinedStates; \
-    enum _user_defined_states { __VA_ARGS__ }; \
-    using State = _type_safe_enum<_user_defined_states, dumb_state_name_wrapper>; \
-    State state; \
-    std::deque<State> _prev_states(1, 0); \
-    void set_state(State s) { \
-       \
-        _prev_states.push_back(s); \
-        state = _prev_states; \
-    } \
-    State cur_state() { \
-        return state; \
-    } \
-    State last_state() { \
-        return _prev_states.back()\
+int _cur_state;
+std::deque<int> _prev_states(1, 0);
+
+void set_state(int s) {
+    _prev_states.push_back(s);
+    _cur_state = s;
+}
+int state() {
+    return _cur_state;
+}
+int last_state() {
+    return _prev_states.back();
+}
+struct _sotr_register_state_func{
+    _sotr_register_state_func(int state, _sotr_do_func f);
+};
+struct _sotr_register_interrupt_func{
+    _sotr_register_interrupt_func(_sotr_flag_func t, _sotr_do_func f);
+};
+
+#define _SOTR_MACRO_CONCAT2(x,y) x ## y
+#define _SOTR_MACRO_CONCAT(x,y) _SOTR_MACRO_CONCAT2(x,y)
+#define while_in(st,fun) _sotr_register_state_func _SOTR_MACRO_CONCAT(_state_func_defined_at_, __LINE__)(st,fun)
+#define define_interrupt(trigger,fun) _sotr_register_interrupt_func _SOTR_MACRO_CONCAT(_interrupt_func_defined_at_, __LINE__)(trigger,fun)
+
+using _sotr_millis_func_t = std::function<unsigned long(void)>;
+
+// Maybe make this a compile error to not define it
+_sotr_millis_func_t _sotr_millis = [] { _sotr_print_err("No millis function defined!"); return 0; };
+struct _sotr_register_millis {
+    _sotr_register_millis(_sotr_millis_func_t millis_function) {
+        _sotr_millis = millis_function;
     }
+};
+#define set_millis(mf) _sotr_register_millis _millis_func_def(mf)
 
-// TODO: Define these functions
-
-void set_millis(std::function<unsigned long(void)> millis_function);
 
 #include "StateOfTheRobot-private.h"
 
