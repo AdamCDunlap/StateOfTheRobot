@@ -59,6 +59,7 @@ namespace _SOTR_Private {
 
 // Make the enum, then make the state_fns vector the right size so we can
 // determine the number of states by asking for its size
+// TODO: We don't want to set the size here, just the capacity :/
 #define DefineStates(...) enum { __VA_ARGS__, SOTR_LAST_STATE }; \
     std::vector<std::vector<std::function<void()>>> \
         _SOTR_Private::state_setup_fns(SOTR_LAST_STATE); \
@@ -114,6 +115,7 @@ int next_state();
  * support microseconds
  */
 // TODO: Call millis() less
+// TODO: Call our generalized time function rather than millis
 #define every(t) for \
     (static unsigned long _SOTR_lasttime = -(t).ms(); \
     _SOTR_Private::millis() - _SOTR_lasttime >= (t).ms(); \

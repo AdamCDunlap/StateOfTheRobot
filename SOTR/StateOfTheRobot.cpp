@@ -33,6 +33,12 @@ void wait_for(std::function<bool()>) {
     // TODO
 }
 
+static void checkInterrupts() {
+    for(auto& TI : interrupt_fns) {
+        if (TI.first()) TI.second();
+    }
+}
+
 int main() {
     next_state_ = 0;
     while(true) {
@@ -46,14 +52,17 @@ int main() {
             state_cleanup_fns[cur_state_];
         enter_state_tm_ = time();
         for (auto & setupFn : setupFns) {
+            checkInterrupts();
             setupFn();
         }
         while(next_state_ != -1) {
             for (auto & loopFn : loopFns) {
+            checkInterrupts();
                 loopFn();
             }
         }
         for (auto & cleanupFn : cleanupFns) {
+            checkInterrupts();
             cleanupFn();
         }
     }
