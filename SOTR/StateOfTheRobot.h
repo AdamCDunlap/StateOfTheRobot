@@ -2,6 +2,7 @@
 #define STATEOFTHEROBOT_H
 #include <functional>
 #include <vector>
+#include <chrono>
 
 // Macros to concatenate tokens in a macro
 // Lets you do _SOTR_MACRO_CONCAT(sup, __LINE__)
@@ -35,15 +36,12 @@ namespace _SOTR_Private {
     struct register_interrupt_func {
         register_interrupt_func(std::function<bool(void)>, std::function<void()>);
     };
-    struct register_millis_func {
-        register_millis_func(std::function<unsigned long()> millis_function);
-    };
-
-    extern std::function<unsigned long()> millis;
+    // Define singleton global vectors to store the state functions
+    // parameter is only used the first time they are called
     // Map from state number to list of functions
-    extern std::vector<std::vector<std::function<void()>>> state_setup_fns;
-    extern std::vector<std::vector<std::function<void()>>> state_loop_fns;
-    extern std::vector<std::vector<std::function<void()>>> state_cleanup_fns;
+    std::vector<std::vector<std::function<void()>>>& state_setup_fns();
+    std::vector<std::vector<std::function<void()>>>& state_loop_fns();
+    std::vector<std::vector<std::function<void()>>>& state_cleanup_fns();
 
     bool stay_in_state();
 }
@@ -54,55 +52,33 @@ namespace _SOTR_Private {
 #define interrupt_func(trigger,fun) namespace _SOTR_Private { static \
     register_interrupt_func _SOTR_MACRO_CONCAT(interrupt_func_defined_at_, \
             __LINE__)(trigger,fun); }
-#define set_millis(mf) namespace _SOTR_Private { static register_millis_func \
-    millis_func_registration(mf); }
 
 // Make the enum, then make the state_fns vector the right size so we can
 // determine the number of states by asking for its size
 // TODO: We don't want to set the size here, just the capacity :/
-#define DefineStates(...) enum { __VA_ARGS__, SOTR_LAST_STATE }; \
-    std::vector<std::vector<std::function<void()>>> \
-        _SOTR_Private::state_setup_fns(SOTR_LAST_STATE); \
-    std::vector<std::vector<std::function<void()>>> \
-        _SOTR_Private::state_loop_fns(SOTR_LAST_STATE); \
-    std::vector<std::vector<std::function<void()>>> \
-        _SOTR_Private::state_cleanup_fns(SOTR_LAST_STATE);
-
-/* Defines a class for time. Nothing really special here
- */
-class SOTR_Time {
-public:
-    SOTR_Time() = default;
-    SOTR_Time(const SOTR_Time&) = default;
-    SOTR_Time& operator=(const SOTR_Time&) = default;
-
-    static SOTR_Time ms(unsigned long);
-    static SOTR_Time us(unsigned long);
-
-    unsigned long ms() const;
-    unsigned long us() const;
-
-    SOTR_Time& operator+=(SOTR_Time&);
-    SOTR_Time operator+(SOTR_Time&) const;
-    // Subtraction is defined, but time can only be positive. It is undefined to
-    // subtract a bigger time from a smaller one
-    SOTR_Time& operator-=(SOTR_Time&);
-    SOTR_Time operator-(SOTR_Time&) const;
-private:
-    void normalizeUs();
-    int us_;
-    unsigned long ms_;
-    friend SOTR_Time ms(unsigned long);
-};
-
-// Lets you write 500_ms to get a SOTR_Time object
-SOTR_Time operator "" _ms(unsigned long long int t);
-
-SOTR_Time time();
+#define DefineStates(...) enum { __VA_ARGS__, _SOTR_LAST_STATE }; \
+    std::vector<std::vector<std::function<void()>>>& \
+    _SOTR_Private::state_setup_fns() { \
+       static std::vector<std::vector<std::function<void()>>> \
+        inner(_SOTR_LAST_STATE); \
+       return inner; \
+    } \
+std::vector<std::vector<std::function<void()>>>& \
+    _SOTR_Private::state_loop_fns() { \
+       static std::vector<std::vector<std::function<void()>>> \
+        inner(_SOTR_LAST_STATE); \
+       return inner; \
+    } \
+std::vector<std::vector<std::function<void()>>>& \
+    _SOTR_Private::state_cleanup_fns() { \
+        static std::vector<std::vector<std::function<void()>>> \
+            inner(_SOTR_LAST_STATE); \
+        return inner; \
+    }
 
 // Functions user can call in their state functions
-SOTR_Time tm_in_state();
-void wait(SOTR_Time);
+std::chrono::steady_clock::duration tm_in_state();
+void wait(std::chrono::steady_clock::duration);
 void wait_for(std::function<bool()>);
 void set_state(int s);
 
@@ -114,12 +90,13 @@ int next_state();
  * Currently only has a resolution of milliseconds, but could be adapted to
  * support microseconds
  */
-// TODO: Call millis() less
-// TODO: Call our generalized time function rather than millis
+// TODO: Use helper class to call now() less often since now() is expensive
 #define every(t) for \
-    (static unsigned long _SOTR_lasttime = -(t).ms(); \
-    _SOTR_Private::millis() - _SOTR_lasttime >= (t).ms(); \
-     _SOTR_lasttime = (_SOTR_Private::millis() - _SOTR_lasttime < (t).ms()) ? \
-                        _SOTR_lasttime + (t).ms() : _SOTR_Private::millis())
+    (std::chrono::steady_clock::time_point _SOTR_lasttime = \
+        std::chrono::steady_clock::time_point::min(); \
+     std::chrono::steady_clock::now() - _SOTR_lasttime >= (t); \
+     _SOTR_lasttime = (std::chrono::steady_clock::now() - _SOTR_lasttime < (t)?\
+                              _SOTR_lasttime + (t) \
+                            : std::chrono::steady_clock::now()))
 
 #endif

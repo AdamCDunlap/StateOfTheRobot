@@ -1,6 +1,8 @@
 #include "Rover5.h"
 #include <SOTR/StateOfTheRobot.h>
 #include <string>
+using namespace std::chrono;
+using namespace std::literals::chrono_literals;
 
 #ifndef ARDUINO
 // From Ardino
@@ -22,8 +24,6 @@ void digitalWrite(int, int);
 Rover5 bot;
 
 DefineStates(Start, GoNorth, GoSouth, Confused, Panic);
-
-set_millis(millis);
 
 // These angles are in milliradians
 enum Dir { NORTH=0, EAST=1571, SOUTH=3142, WEST=4712 };
@@ -48,7 +48,7 @@ state_func(Start, [] {
     bot.Run(0, 1);
     if (bot.senseDir(EAST)) {
         set_state(GoNorth);
-    } else if (tm_in_state().ms() > 10000) {
+    } else if (duration_cast<milliseconds>(tm_in_state()).count() > 10000) {
         set_state(Confused);
     }
 });
@@ -57,7 +57,7 @@ state_func(GoNorth, [] {
     bot.Run(1, 0);
     if (bot.senseDir(NORTH)) {
         set_state(GoSouth);
-    } else if (tm_in_state().ms() > 10000) {
+    } else if (duration_cast<milliseconds>(tm_in_state()).count() > 10000) {
         set_state(Confused);
     }
 });
@@ -66,7 +66,7 @@ state_func(GoSouth, [] {
     bot.Run(-1, 0);
     if (bot.senseDir(SOUTH)) {
         set_state(GoNorth);
-    } else if (tm_in_state().ms() > 10000) {
+    } else if (duration_cast<milliseconds>(tm_in_state()).count() > 10000) {
         set_state(Confused);
     }
 });
@@ -76,14 +76,14 @@ state_func(Confused, [] {
         Serial.println(prev_state());
     }, [] {
         digitalWrite(13, LOW);
-        wait(500_ms);
+        wait(500ms);
         digitalWrite(13, HIGH);
-        wait(500_ms);
+        wait(500ms);
     }
 );
 
 state_func(Panic, [] {
-    every(100_ms) {
+    every(100ms) {
          Serial.println("BEAR!");
     }
 });
