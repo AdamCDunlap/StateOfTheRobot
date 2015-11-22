@@ -11,6 +11,7 @@ static std::function<void(char*)> print_err_func;
 static int cur_state_;
 static int prev_state_;
 static int next_state_;
+static int cur_st_func_num_;
 static our_clock::time_point enter_state_tm_;
 
 static std::vector<std::pair<std::function<bool()>, std::function<void()>>>&
@@ -25,17 +26,6 @@ interrupt_fns() {
 /////////////////////////////    Main Functions    /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-our_clock::duration tm_in_state() {
-    return our_clock::now() - enter_state_tm_;
-}
-void wait(our_clock::duration) {
-    // TODO
-}
-void wait_for(std::function<bool()>) {
-
-    // TODO
-}
-
 static void checkInterrupts() {
     for(auto& TI : interrupt_fns()) {
         if (TI.first()) TI.second();
@@ -44,29 +34,28 @@ static void checkInterrupts() {
 
 int main() {
     next_state_ = 0;
+    cur_state_ = 0;
     while(true) {
+        prev_state_ = cur_state_;
         cur_state_ = next_state_;
         next_state_ = -1;
-        std::vector<std::function<void(void)>> & setupFns =
-            state_setup_fns()[cur_state_];
-        std::vector<std::function<void(void)>> & loopFns =
-            state_loop_fns()[cur_state_];
-        std::vector<std::function<void(void)>> & cleanupFns =
-            state_cleanup_fns()[cur_state_];
         enter_state_tm_ = our_clock::now();
-        for (auto & setupFn : setupFns) {
-            checkInterrupts();
-            setupFn();
+
+        std::vector<state_fn> & stateFns =
+            state_fns()[cur_state_];
+        for (state_fn & sf: stateFns) {
+            sf.substate = 0;
+            sf.enter_subst_tm = enter_state_tm_;
         }
         while(next_state_ == -1) {
-            for (auto & loopFn : loopFns) {
+            cur_st_func_num_ = 0;
+            for (state_fn & sf : stateFns) {
                 checkInterrupts();
-                loopFn();
+                if (sf.substate < sf.subfns.size()) {
+                    sf.subfns[sf.substate]();
+                }
+                ++cur_st_func_num_;
             }
-        }
-        for (auto & cleanupFn : cleanupFns) {
-            checkInterrupts();
-            cleanupFn();
         }
     }
     return 0;
@@ -89,6 +78,25 @@ int next_state() {
 void set_state(int s) {
     next_state_ = s;
 }
+void next_substate() {
+    state_fn& sf = state_fns()[cur_state_][cur_st_func_num_];
+    ++sf.substate;
+    sf.enter_subst_tm = our_clock::now();
+}
+void next_substate(int n) {
+    state_fn& sf = state_fns()[cur_state_][cur_st_func_num_];
+    state_fns()[cur_state_][cur_st_func_num_].substate = n;
+    sf.enter_subst_tm = our_clock::now();
+}
+
+our_clock::duration tm_in_substate() {
+    return our_clock::now() -
+        state_fns()[cur_state_][cur_st_func_num_].enter_subst_tm;
+}
+
+our_clock::duration tm_in_state() {
+    return our_clock::now() - enter_state_tm_;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,24 +109,8 @@ _SOTR_Private::register_err_func::register_err_func(
 }
 _SOTR_Private::register_state_func::register_state_func(
         int state,
-        std::function<void()> loop) {
-    state_loop_fns()[state].push_back(loop);
-}
-_SOTR_Private::register_state_func::register_state_func(
-        int state,
-        std::function<void()> setup,
-        std::function<void()> loop)
-    : register_state_func(state, loop) {
-    state_setup_fns()[state].push_back(setup);
-}
-_SOTR_Private::register_state_func::register_state_func(
-        int state,
-        std::function<void()> setup,
-        std::function<void()> loop,
-        std::function<void()> cleanup)
-    : register_state_func(state, setup, loop) {
-
-    state_cleanup_fns()[state].push_back(cleanup);
+        const std::vector<std::function<void()>>& fns) {
+    state_fns()[state].emplace_back(fns);
 }
 _SOTR_Private::register_interrupt_func::register_interrupt_func(
         std::function<bool()> trigger,

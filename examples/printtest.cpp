@@ -62,14 +62,23 @@ state_func(GoSouth, [] {
 });
 
 state_func(Confused, [] {
-        printw("Entering confused state, prev state is %d\n", prev_state());
-    }, [] {
-        printw("Tick\n");
-        wait(500ms);
-        printw("Tock\n");
-        wait(500ms);
+    printw("Entering confused state, prev state is %d\n", prev_state());
+    next_substate();
+}, [] {
+    printw("Tick\n");
+    next_substate();
+}, [] {
+    if (duration_cast<milliseconds>(tm_in_substate()).count() > 500) {
+        next_substate();
     }
-);
+}, [] {
+    printw("Tock\n");
+    next_substate();
+}, [] {
+    if (duration_cast<milliseconds>(tm_in_substate()).count() > 500) {
+        next_substate(1);
+    }
+});
 
 state_func(Panic, [] {
     every(100ms) {
@@ -77,19 +86,26 @@ state_func(Panic, [] {
     }
 });
 
-void scanBearSensor() {
-    printw("Move sensor right. Press 0 to stop\n");
-    wait_for([]{return isCh('0');});
-    printw("Move sensor left. Press 9 to stop\n");
-    wait_for([]{return isCh('9');});
-}
-
-void checkForBears() {
-    scanBearSensor();
-}
-
+// Scan the bear sensor when we're going north
 state_func(GoNorth, [] {
-    printw("Checking for bears\n");
-    // While moving north, we should check for polar bears
-    checkForBears();
+    printw("Move sensor right. Press 0 to stop\n");
+    next_substate();
+}, [] {
+    if(isCh('0')) {
+        next_substate();
+    }
+}, [] {
+    printw("Move sensor left. Press 9 to stop\n");
+    next_substate();
+}, [] {
+    if(isCh('9')) {
+        next_substate(0);
+    }
+    
+});
+state_func(GoNorth, [] {
+    printw("Press b if there's a bear\n");
+    if (isCh('b')) {
+        set_state(Panic);
+    }
 });
