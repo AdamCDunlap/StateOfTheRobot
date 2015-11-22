@@ -10,9 +10,6 @@ using namespace std::literals::chrono_literals;
 
 DefineStates(Start, GoNorth, GoSouth, Confused, Panic);
 
-// These angles are in milliradians
-enum Dir { NORTH=0, EAST=1571, SOUTH=3142, WEST=4712 };
-
 WINDOW* win;
 
 // Sees if the user has typed the given character. Doesn't modify the character

@@ -72,8 +72,6 @@ namespace _SOTR_Private {
 // Functions user can call in their state functions
 std::chrono::steady_clock::duration tm_in_state();
 std::chrono::steady_clock::duration tm_in_substate();
-void wait(std::chrono::steady_clock::duration);
-void wait_for(std::function<bool()>);
 void set_state(int s);
 void next_substate();
 void next_substate(int n);

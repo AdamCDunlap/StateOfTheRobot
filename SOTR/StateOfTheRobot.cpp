@@ -7,7 +7,6 @@ using our_clock = std::chrono::steady_clock;
 
 // Private data
 static std::function<void(char*)> print_err_func;
-//static std::deque<int> prev_states(2, 0);
 static int cur_state_;
 static int prev_state_;
 static int next_state_;
