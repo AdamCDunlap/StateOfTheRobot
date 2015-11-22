@@ -47,7 +47,7 @@ state_func(GoNorth, [] {
     printw("Been in this state for %lu\n", duration_cast<milliseconds>(tm_in_state()).count());
     if (isCh('n')) {
         set_state(GoSouth);
-    } else if (duration_cast<milliseconds>(tm_in_state()).count() > 10000) {
+    } else if (tm_in_state() > 10s) {
         set_state(Confused);
     }
 });
@@ -56,7 +56,7 @@ state_func(GoSouth, [] {
     printw("Moving south. Press n to move on\n");
     if (isCh('n')) {
         set_state(GoNorth);
-    } else if (duration_cast<milliseconds>(tm_in_state()).count() > 10000) {
+    } else if (tm_in_state() > 10s) {
         set_state(Confused);
     }
 });
@@ -68,14 +68,14 @@ state_func(Confused, [] {
     printw("Tick\n");
     next_substate();
 }, [] {
-    if (duration_cast<milliseconds>(tm_in_substate()).count() > 500) {
+    if (tm_in_substate() > 500ms) {
         next_substate();
     }
 }, [] {
     printw("Tock\n");
     next_substate();
 }, [] {
-    if (duration_cast<milliseconds>(tm_in_substate()).count() > 500) {
+    if (tm_in_substate() > 500ms) {
         next_substate(1);
     }
 });
