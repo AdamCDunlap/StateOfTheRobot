@@ -50,6 +50,35 @@ namespace _SOTR_Private {
         {}
     };
     std::vector<std::vector<state_fn>>& state_fns();
+
+    class every_helper {
+        const std::chrono::steady_clock::duration dur_;
+        std::chrono::steady_clock::time_point prev_time_;
+        bool first_call_;
+    public:
+        every_helper(std::chrono::steady_clock::duration dur)
+            : dur_(dur),
+              prev_time_(std::chrono::steady_clock::time_point::min()),
+              first_call_(true)
+        {
+        }
+        bool condition() {
+            auto now = std::chrono::steady_clock::now();
+            auto diff = now - prev_time_;
+
+            if (diff >= dur_ || first_call_) {
+                if (diff >= 2*dur_ || first_call_) {
+                    // We've missed a point, so re-sync to current time
+                    prev_time_ = now;
+                    first_call_ = false;
+                } else {
+                    prev_time_ += dur_;
+                }
+                return true;
+            }
+            return false;
+        }
+    };
 }
 #define set_error_func(ef) namespace _SOTR_Private { static register_err_func \
     err_func_registration(ef); }
@@ -76,6 +105,13 @@ void set_state(int s);
 void next_substate();
 void next_substate(int n);
 
+// Auto-defined substate functions that do nothing but wait for the condition
+// to be true before advancing substates
+std::function<void()> wait_for(int n, std::function<bool()> f);
+std::function<void()> wait_for(std::function<bool()> f);
+std::function<void()> wait(int n, std::chrono::steady_clock::duration d);
+std::function<void()> wait(std::chrono::steady_clock::duration d);
+
 
 int state();
 int prev_state();
@@ -85,13 +121,8 @@ int next_state();
  * Currently only has a resolution of milliseconds, but could be adapted to
  * support microseconds
  */
-// TODO: Use helper class to call now() less often since now() is expensive
 #define every(t) for \
-    (std::chrono::steady_clock::time_point _SOTR_lasttime = \
-        std::chrono::steady_clock::time_point::min(); \
-     std::chrono::steady_clock::now() - _SOTR_lasttime >= (t); \
-     _SOTR_lasttime = (std::chrono::steady_clock::now() - _SOTR_lasttime < (t)?\
-                              _SOTR_lasttime + (t) \
-                            : std::chrono::steady_clock::now()))
+    (static _SOTR_Private::every_helper _SOTR_No_Nested_Everys(t); \
+     _SOTR_No_Nested_Everys.condition();)
 
 #endif

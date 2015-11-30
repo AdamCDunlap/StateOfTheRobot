@@ -32,6 +32,9 @@ static void checkInterrupts() {
 }
 
 int main() {
+    interrupt_fns().shrink_to_fit();
+    state_fns().shrink_to_fit();
+
     next_state_ = 0;
     cur_state_ = 0;
     while(true) {
@@ -80,12 +83,36 @@ void set_state(int s) {
 void next_substate() {
     state_fn& sf = state_fns()[cur_state_][cur_st_func_num_];
     ++sf.substate;
+    if (sf.substate >= sf.subfns.size()) {
+        sf.substate = 0;
+    }
     sf.enter_subst_tm = our_clock::now();
 }
 void next_substate(int n) {
     state_fn& sf = state_fns()[cur_state_][cur_st_func_num_];
     state_fns()[cur_state_][cur_st_func_num_].substate = n;
     sf.enter_subst_tm = our_clock::now();
+}
+std::function<void()> wait(int n, std::chrono::steady_clock::duration d) {
+    return wait_for(n, [d]{return tm_in_substate() > d;});
+}
+std::function<void()> wait(std::chrono::steady_clock::duration d) {
+    return wait_for([d]{return tm_in_substate() > d;});
+}
+
+std::function<void()> wait_for(std::function<bool()> f) {
+    return [f] {
+        if (f()) {
+            next_substate();
+        }
+    };
+}
+std::function<void()> wait_for(int n, std::function<bool()> f) {
+    return [f,n] {
+        if (f()) {
+            next_substate(n);
+        }
+    };
 }
 
 our_clock::duration tm_in_substate() {

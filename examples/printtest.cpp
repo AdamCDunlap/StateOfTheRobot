@@ -10,6 +10,9 @@ using namespace std::literals::chrono_literals;
 
 DefineStates(Start, GoNorth, GoSouth, Confused, Panic);
 
+// These angles are in milliradians
+enum Dir { NORTH=0, EAST=1571, SOUTH=3142, WEST=4712 };
+
 WINDOW* win;
 
 // Sees if the user has typed the given character. Doesn't modify the character
@@ -34,14 +37,17 @@ state_func(Start, [] {
     win = initscr();
     scrollok(win, TRUE);
     timeout(0);
+    noecho();
 #endif
     set_state(GoNorth);
     printw("Pressing = triggers an interrupt\n");
     });
 
 state_func(GoNorth, [] {
-    printw("Moving north. Press n to move on\n");
-    printw("Been in this state for %lu\n", duration_cast<milliseconds>(tm_in_state()).count());
+    every(1s) {
+        printw("Moving north. Press n to move on\n");
+        printw("Been in this state for %lu\n", duration_cast<milliseconds>(tm_in_state()).count());
+    }
     if (isCh('n')) {
         set_state(GoSouth);
     } else if (tm_in_state() > 10s) {
@@ -50,7 +56,9 @@ state_func(GoNorth, [] {
 });
 
 state_func(GoSouth, [] {
-    printw("Moving south. Press n to move on\n");
+    every(1s) {
+        printw("Moving south. Press n to move on\n");
+    }
     if (isCh('n')) {
         set_state(GoNorth);
     } else if (tm_in_state() > 10s) {
@@ -64,21 +72,17 @@ state_func(Confused, [] {
 }, [] {
     printw("Tick\n");
     next_substate();
-}, [] {
-    if (tm_in_substate() > 500ms) {
-        next_substate();
-    }
-}, [] {
+},
+    wait(500ms),
+[] {
     printw("Tock\n");
     next_substate();
-}, [] {
-    if (tm_in_substate() > 500ms) {
-        next_substate(1);
-    }
-});
+},
+    wait(1, 500ms)
+);
 
 state_func(Panic, [] {
-    every(100ms) {
+    every(1s) {
          printw("BEAR!\n");
     }
 });
@@ -87,21 +91,19 @@ state_func(Panic, [] {
 state_func(GoNorth, [] {
     printw("Move sensor right. Press 0 to stop\n");
     next_substate();
-}, [] {
-    if(isCh('0')) {
-        next_substate();
-    }
-}, [] {
+},
+    wait_for(std::bind(isCh, '0')),
+[] {
     printw("Move sensor left. Press 9 to stop\n");
     next_substate();
-}, [] {
-    if(isCh('9')) {
-        next_substate(0);
-    }
-    
-});
+},
+    wait_for(std::bind(isCh, '9'))
+);
+
 state_func(GoNorth, [] {
-    printw("Press b if there's a bear\n");
+    every(1s) {
+        printw("Press b if there's a bear\n");
+    }
     if (isCh('b')) {
         set_state(Panic);
     }
