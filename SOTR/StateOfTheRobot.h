@@ -116,6 +116,7 @@ std::function<void()> wait(std::chrono::steady_clock::duration d);
 int state();
 int prev_state();
 int next_state();
+void stop_state_machine();
 
 /* A control structure that lets a piece of code be run every so often.
  * Currently only has a resolution of milliseconds, but could be adapted to
@@ -126,3 +127,4 @@ int next_state();
      _SOTR_No_Nested_Everys.condition();)
 
 #endif
+

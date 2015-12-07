@@ -12,6 +12,7 @@ static int prev_state_;
 static int next_state_;
 static int cur_st_func_num_;
 static our_clock::time_point enter_state_tm_;
+static bool stop_state_machine_;
 
 static std::vector<std::pair<std::function<bool()>, std::function<void()>>>&
 interrupt_fns() {
@@ -37,7 +38,8 @@ int main() {
 
     next_state_ = 0;
     cur_state_ = 0;
-    while(true) {
+    stop_state_machine_ = false;
+    while(!stop_state_machine_) {
         prev_state_ = cur_state_;
         cur_state_ = next_state_;
         next_state_ = -1;
@@ -49,7 +51,7 @@ int main() {
             sf.substate = 0;
             sf.enter_subst_tm = enter_state_tm_;
         }
-        while(next_state_ == -1) {
+        while(next_state_ == -1 && !stop_state_machine_) {
             cur_st_func_num_ = 0;
             for (state_fn & sf : stateFns) {
                 checkInterrupts();
@@ -76,6 +78,9 @@ int prev_state() {
 }
 int next_state() {
     return next_state_;
+}
+void stop_state_machine() {
+    stop_state_machine_ = true;
 }
 void set_state(int s) {
     next_state_ = s;
@@ -143,3 +148,4 @@ _SOTR_Private::register_interrupt_func::register_interrupt_func(
         std::function<void()> func) {
     interrupt_fns().push_back(make_pair(trigger, func));
 }
+
