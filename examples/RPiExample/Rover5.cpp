@@ -7,7 +7,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
- 
+
 #include <Rover5.h>
 #include <StateOfTheRobot.h>
 using namespace std::literals::chrono_literals;
@@ -20,14 +20,14 @@ Rover5::Rover5(uint8_t i2caddress)
 }
 
 void Rover5::begin() {
- 
+
     if ((i2cfile = open("/dev/i2c-1", O_RDWR)) < 0) {
         if ((i2cfile = open("/dev/i2c-0", O_RDWR)) < 0) {
             fprintf(stderr, "Failed to open i2c file\n");
             exit(1);
         }
     }
- 
+
     if (ioctl(i2cfile, I2C_SLAVE, interfaceAddress) < 0) {
       fprintf(stderr, "I2C: Failed to acquire bus access/talk to slave %d\n", interfaceAddress);
       exit(1);
@@ -44,6 +44,7 @@ void Rover5::begin() {
     instances.push_back(this);
 }
 void Rover5::end() {
+    sendI2C();
     close(i2cfile);
 }
 
@@ -101,20 +102,23 @@ void Rover5::sendI2Cs() {
             if (idx >= instances.size()) {
                 idx = 0;
             }
-
-            bot->powers[BR] *= -1;
-            bot->powers[BL] *= -1;
-
-            printf("Sending %d %d %d %d\n", bot->powers[0], bot->powers[1], bot->powers[2], bot->powers[3]);
-         
-            int written;
-            if ((written = write(bot->i2cfile, bot->powers, 8)) != 8) {
-                printf("Failed to write to i2c. Wrote %d bytes\n", written);
-            }         
-            bot->powers[BR] *= -1;
-            bot->powers[BL] *= -1;
+            bot->sendI2C();
         }
     }
+}
+
+void Rover5::sendI2C() {
+    powers[BR] *= -1;
+    powers[BL] *= -1;
+
+    printf("Sending %d %d %d %d\n", powers[0], powers[1], powers[2], powers[3]);
+
+    int written;
+    if ((written = write(i2cfile, powers, 8)) != 8) {
+        printf("Failed to write to i2c. Wrote %d bytes\n", written);
+    }
+    powers[BR] *= -1;
+    powers[BL] *= -1;
 }
 
 void Rover5::getPowers(int16_t outpowers[4]) {
@@ -157,7 +161,7 @@ bool Rover5::updateEncoders() {
 
     //}
 
-    //if (Wire.available() < 16) { 
+    //if (Wire.available() < 16) {
     //    //Serial.println(F("Bytes not avilable"));
     //    return false;
     //}
@@ -200,7 +204,7 @@ void Rover5::updatePosition() {
     static unsigned long lastTime = curTime;
     unsigned int timeDiff = curTime - lastTime;
     lastTime = curTime;
-    
+
     // "n" function to get the current rotational velocity
 
     // use K as defined in Ether's paper
@@ -213,19 +217,19 @@ void Rover5::updatePosition() {
     // Units: ticks/milliradian
     // Ends up being 0.8090376273838012901584924638102813403418365325139869
     const double K = (((6.75*(1000/ticksToMills))/2 + (8.5*(1000/ticksToMills))/2) * 4)/1000;
-    
+
     // no need to integrate the speeds when the distances are there
     //
     //long angVel = (+speeds[FL] -speeds[FR] +speeds[BL] -speeds[BR])/K;
     // Integrate angVel to get the angle
     // Devide by 1000000 to convert from microseconds to seconds
     //pos.angle += (angVel * (currentTime - lastTime)) / 1000000;
-    
+
     pos.angle = ticksToMills * (double)(+ticks[FL] -ticks[FR] +ticks[BL] -ticks[BR])/K;
 
-    
+
     // "r" function to get the field relative velocity and rotational velocity
-    
+
     // the postfix r means it's robot relative
     // These are in ticks/second
     int xvelr = (+(long)speeds[FL] -(long)speeds[FR] -(long)speeds[BL] +(long)speeds[BR])/4;
@@ -263,7 +267,7 @@ void Rover5::normalize4(int16_t nums[4], int16_t maximum) {
 
     // If all are below the max, we don't need to do anything
     if (highest <= maximum) return;
-    
+
     for (uint8_t i=0; i<4; i++) {
         nums[i] = (int16_t)(( (int32_t)nums[i] * (long)maximum)/(long)highest);
     }

@@ -207,6 +207,8 @@ private:
     */
     void updatePosition();
 
+    void sendI2C();
+
     friend void sendI2Cs();
     static void sendI2Cs();
     static std::vector<Rover5*> instances;
