@@ -2,6 +2,7 @@
 #define ROVER5_H
 
 #include <cstdint>
+#include <vector>
 
 /**
  * @brief A class to control our Rover5 robot platform.
@@ -196,11 +197,6 @@ private:
     void normalize4(int16_t nums[4], int16_t maximum);
 
    /**
-    * @brief Runs motors using values stored in powers array
-    */
-    void sendToMotors();
-
-   /**
     * @brief Updates the speeds as part of the UpdateEncoders function
     * @param ticks The current value of the ticks array
     */
@@ -210,6 +206,10 @@ private:
     * @brief Updates the pos array to reflect the current position
     */
     void updatePosition();
+
+    friend void sendI2Cs();
+    static void sendI2Cs();
+    static std::vector<Rover5*> instances;
 };
 
 #endif // ROVER5_H

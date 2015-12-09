@@ -4,14 +4,7 @@
 using namespace std::chrono;
 using namespace std::literals::chrono_literals;
 
-#ifdef NO_CURSES
-#define printw printf
-#endif
-
 DefineStates(Start, GoNorth, GoSouth, Confused, Panic);
-
-// These angles are in milliradians
-enum Dir { NORTH=0, EAST=1571, SOUTH=3142, WEST=4712 };
 
 WINDOW* win;
 
@@ -25,6 +18,12 @@ bool isCh(char desired) {
     return false;
 }
 
+global_func(GlobalFuncStart::enabled, [] {
+    every(1400ms) {
+        printw("In the global function\n");
+    }
+});
+
 interrupt_func([]{return state() > Start && isCh('=');}, [] {
     if (state() != Confused) {
         printw("Saw '='! Was in state %d\n", prev_state());
@@ -33,12 +32,10 @@ interrupt_func([]{return state() > Start && isCh('=');}, [] {
 });
 
 state_func(Start, [] {
-#ifndef NO_CURSES
     win = initscr();
     scrollok(win, TRUE);
     timeout(0);
     noecho();
-#endif
     set_state(GoNorth);
     printw("Pressing = triggers an interrupt\n");
     });

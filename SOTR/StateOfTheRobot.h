@@ -10,6 +10,20 @@
 #define _SOTR_MACRO_CONCAT2(x,y) x ## y
 #define _SOTR_MACRO_CONCAT(x,y) _SOTR_MACRO_CONCAT2(x,y)
 
+enum class GlobalFuncStart { disabled, enabled };
+namespace _SOTR_Private { struct register_global_func; }
+class global_func_handle {
+public:
+    void enable(bool en=true);
+    void disable();
+
+    global_func_handle() = delete;
+private:
+    global_func_handle(size_t inIdx);
+    friend class _SOTR_Private::register_global_func;
+    size_t idx;
+};
+
 /* The user defines their functions in the top-level part, so they can't be
  * normal functions since functions can't be called outside other functions.
  * Instead, we'll make all the registrations of state functions and such be
@@ -26,9 +40,21 @@ namespace _SOTR_Private {
     struct register_err_func {
         register_err_func(std::function<void(char*)>);
     };
+    struct register_debug_func {
+        register_debug_func(std::function<void(char*)>);
+    };
     struct register_state_func {
         register_state_func (int state,
                 const std::vector<std::function<void()>>& fns);
+    };
+    struct register_global_func {
+        register_global_func (GlobalFuncStart en,
+                const std::vector<std::function<void()>>& fns);
+        global_func_handle get_handle() {
+            return global_func_handle(idx);
+        }
+    private:
+        size_t idx;
     };
     struct register_interrupt_func {
         register_interrupt_func(std::function<bool(void)>,
@@ -82,6 +108,16 @@ namespace _SOTR_Private {
 }
 #define set_error_func(ef) namespace _SOTR_Private { static register_err_func \
     err_func_registration(ef); }
+#define set_debug_func(df) namespace _SOTR_Private { static register_debug_func \
+    debug_func_registration(df); }
+#define global_func(en,...) _SOTR_Private::register_global_func \
+                                (en,{__VA_ARGS__}).get_handle();
+//#define global_func(en,...) namespace _SOTR_Private { static \
+//    register_global_func _SOTR_MACRO_CONCAT(global_func_defined_at_, \
+//            __LINE__)(en,{__VA_ARGS__}); }, \
+//    _SOTR_MACRO_CONCAT(global_func_defined_at_, __LINE__).get_handle()
+#define state_func(st,...) namespace _SOTR_Private { static register_state_func \
+    _SOTR_MACRO_CONCAT(state_func_defined_at_, __LINE__)(st,{__VA_ARGS__}); }
 #define state_func(st,...) namespace _SOTR_Private { static register_state_func \
     _SOTR_MACRO_CONCAT(state_func_defined_at_, __LINE__)(st,{__VA_ARGS__}); }
 #define interrupt_func(trigger,fun) namespace _SOTR_Private { static \

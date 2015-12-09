@@ -9,11 +9,14 @@
 #include <unistd.h>
  
 #include <Rover5.h>
+#include <StateOfTheRobot.h>
+using namespace std::literals::chrono_literals;
+
+std::vector<Rover5*> Rover5::instances;
 
 Rover5::Rover5(uint8_t i2caddress)
     : interfaceAddress(i2caddress)
-    {
-
+{
 }
 
 void Rover5::begin() {
@@ -37,6 +40,8 @@ void Rover5::begin() {
     pos.x = 0;
     pos.y = 0;
     pos.angle = 0;
+
+    instances.push_back(this);
 }
 void Rover5::end() {
     close(i2cfile);
@@ -48,11 +53,9 @@ void Rover5::run(int16_t frontLeft, int16_t frontRight, int16_t backLeft, int16_
     powers[FR] = frontRight;
     powers[BL] = backLeft;
     powers[BR] = backRight;
-    sendToMotors();
 }
 void Rover5::run(int16_t powers[4]) {
     memcpy(Rover5::powers, powers, sizeof(Rover5::powers));
-    sendToMotors();
 }
 void Rover5::move(int16_t x, int16_t y, int16_t z) {
     powers[FL] = +y + x + z;
@@ -76,35 +79,42 @@ void Rover5::move(int16_t x, int16_t y, int16_t z) {
         // If it's 0, keep it 0
     }
 
-    sendToMotors();
 }
 
 void Rover5::runOne(int16_t power, mtrNum_t num) {
     powers[num] = power;
-    sendToMotors();
+}
+
+void sendI2Cs() {
+    Rover5::sendI2Cs();
 }
 
 // Runs motors using values stored in powers array
-void Rover5::sendToMotors() {
-    powers[BR] *= -1;
-    powers[BL] *= -1;
+global_func_handle i2csender = global_func(GlobalFuncStart::enabled, sendI2Cs);
 
-    printf("Sending %d %d %d %d\n", powers[0], powers[1], powers[2], powers[3]);
- 
-    int written;
-    if ((written = write(i2cfile, powers, 8)) != 8) {
-        printf("Failed to write to i2c. Wrote %d bytes\n", written);
-        //exit(1);
-    } else {
-        //printf("Successfully wrote 8 bytes\n");
+void Rover5::sendI2Cs() {
+    static size_t idx = 0;
+    if (!instances.empty()) {
+        every(10ms) {
+            Rover5* bot = instances[idx];
+            ++idx;
+            if (idx >= instances.size()) {
+                idx = 0;
+            }
+
+            bot->powers[BR] *= -1;
+            bot->powers[BL] *= -1;
+
+            printf("Sending %d %d %d %d\n", bot->powers[0], bot->powers[1], bot->powers[2], bot->powers[3]);
+         
+            int written;
+            if ((written = write(bot->i2cfile, bot->powers, 8)) != 8) {
+                printf("Failed to write to i2c. Wrote %d bytes\n", written);
+            }         
+            bot->powers[BR] *= -1;
+            bot->powers[BL] *= -1;
+        }
     }
- 
-    powers[BR] *= -1;
-    powers[BL] *= -1;
-
-    // As we are not talking to direct hardware but a microcontroller we
-    // need to wait a short while so that it can respond.
-    usleep(10000);
 }
 
 void Rover5::getPowers(int16_t outpowers[4]) {
