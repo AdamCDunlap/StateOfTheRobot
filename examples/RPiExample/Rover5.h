@@ -83,7 +83,7 @@ public:
     * method.
     * @param ticks The array to put the ticks into.
     */
-    void getTicks(long ticks[4]);
+    void getTicks(int32_t ticks[4]);
 
 
    /**
@@ -125,7 +125,7 @@ public:
     * method.
     * @param dists The array to put the distances into.
     */
-    void getDists(long dists[4]);
+    void getDists(int32_t dists[4]);
 
     /**
     * @brief Sets the i2c address of the interface arduino
@@ -150,7 +150,7 @@ private:
     uint8_t interfaceAddress;
 
     /// Current number of encoder ticks for each motor
-    long ticks[4];
+    int32_t ticks[4];
 
     /// Current speeds for each motor in encoder ticks/second
     /// Maximum realistic value is about 25000
@@ -168,13 +168,13 @@ private:
 
     // Circular buffer class holding the last ten tick counts and times
     template <uint8_t bufsz> struct TickLogs {
-        long ticks[bufsz][4];
-        unsigned long times[bufsz];
+        int32_t ticks[bufsz][4];
+        uint32_t times[bufsz];
         uint8_t nextEntry;
 
         TickLogs() : nextEntry(0) {}
 
-        void Put(long iticks[4], unsigned long time) {
+        void Put(int32_t iticks[4], unsigned long time) {
             memcpy(ticks[nextEntry], iticks, sizeof(ticks[0]));
             times[nextEntry] = time;
 
@@ -200,7 +200,7 @@ private:
     * @brief Updates the speeds as part of the UpdateEncoders function
     * @param ticks The current value of the ticks array
     */
-    void updateSpeeds(long ticks[4]);
+    void updateSpeeds(int32_t ticks[4]);
 
    /**
     * @brief Updates the pos array to reflect the current position

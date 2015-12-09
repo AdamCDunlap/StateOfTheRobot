@@ -127,7 +127,7 @@ void Rover5::getPowers(int16_t outpowers[4]) {
 
 // Populates the ticks array with the current number of encoder ticks for
 //  each motor
-void Rover5::getTicks(long outticks[4]) {
+void Rover5::getTicks(int32_t outticks[4]) {
     memcpy(outticks, Rover5::ticks, sizeof(Rover5::ticks));
 }
 
@@ -141,7 +141,7 @@ void Rover5::getSpeeds(int16_t outspeeds[4]) {
     }
 }
 
-void Rover5::getDists(long dists[4]) {
+void Rover5::getDists(int32_t dists[4]) {
     for (uint8_t i=0; i<4; i++) {
         dists[i] = ticks[i] * ticksToMills;
     }
@@ -170,25 +170,32 @@ bool Rover5::updateEncoders() {
     //for (uint8_t i=0; i<16; i++) {
     //    ticksbreakdown[i] = Wire.read();
     //}
-    //ticks[FR] *= -1;
-    //ticks[FL] *= -1;
+    int bytesRead;
+    if ((bytesRead = read(i2cfile, ticks, 16)) != 16) {
+         printf("Didn't manage to read");
+         return false;
+    }
+    ticks[FR] *= -1;
+    ticks[FL] *= -1;
 
-    //updateSpeeds(ticks);
+    printf("read %d %d %d %d\n", ticks[0], ticks[1], ticks[2], ticks[3]);
 
-    //updatePosition();
+    updateSpeeds(ticks);
+
+    updatePosition();
     return true;
 }
 
-void Rover5::updateSpeeds(long ticks[4]) {
+void Rover5::updateSpeeds(int32_t ticks[4]) {
     //unsigned long curTime = micros();
-    unsigned long curTime = 0;
+    uint32_t curTime = 0;
 
-    unsigned long timesDiff = curTime - tickLogs.times[tickLogs.nextEntry];
+    uint32_t timesDiff = curTime - tickLogs.times[tickLogs.nextEntry];
     //Serial.print(F("tm: ")); Serial.print(timesDiff); Serial.print(' ');
     for (uint8_t i=0; i<4; i++) {
         // Difference in ticks from oldest entry to entry about to be put in
         //  over difference in the times over the same
-        long ticksDiff =  ticks[i] - tickLogs.ticks[tickLogs.nextEntry][i];
+        int32_t ticksDiff =  ticks[i] - tickLogs.ticks[tickLogs.nextEntry][i];
         speeds[i] = (int16_t)(1000000.0 * (float)ticksDiff / (float)timesDiff);
         //Serial.print(F("ck")); Serial.print(i); Serial.print(F(": ")); Serial.print(ticksDiff); Serial.print(' ');
         //Serial.print(F("tm: ")); Serial.print(timesDiff); Serial.print('\t');
@@ -200,8 +207,8 @@ void Rover5::updateSpeeds(long ticks[4]) {
 void Rover5::updatePosition() {
     // Variables used for integrating/dervitizing
     //unsigned long curTime = micros();
-    unsigned long curTime = 0;
-    static unsigned long lastTime = curTime;
+    uint32_t curTime = 0;
+    static uint32_t lastTime = curTime;
     unsigned int timeDiff = curTime - lastTime;
     lastTime = curTime;
 
@@ -232,8 +239,8 @@ void Rover5::updatePosition() {
 
     // the postfix r means it's robot relative
     // These are in ticks/second
-    int xvelr = (+(long)speeds[FL] -(long)speeds[FR] -(long)speeds[BL] +(long)speeds[BR])/4;
-    int yvelr = (+(long)speeds[FL] +(long)speeds[FR] +(long)speeds[BL] +(long)speeds[BR])/4;
+    int xvelr = (+(int32_t)speeds[FL] -(int32_t)speeds[FR] -(int32_t)speeds[BL] +(int32_t)speeds[BR])/4;
+    int yvelr = (+(int32_t)speeds[FL] +(int32_t)speeds[FR] +(int32_t)speeds[BL] +(int32_t)speeds[BR])/4;
 
     // Now rotate the vector
     //float sinA = sin(pos.angle/1000.0);
@@ -249,8 +256,8 @@ void Rover5::updatePosition() {
     // (not much is lost since micros() only has a precision of 4) so that
     // a full second and half can go by without overflow. More than that and
     // the user deserves to get wrong answers.
-    //pos.x  += (((long)xvel * (long)(timeDiff/10))/100000);
-    //pos.y  += (((long)yvel * (long)(timeDiff/10))/100000);
+    //pos.x  += (((int32_t)xvel * (int32_t)(timeDiff/10))/100000);
+    //pos.y  += (((int32_t)yvel * (int32_t)(timeDiff/10))/100000);
     pos.x  += (((float)xvel * (float)(timeDiff/10))/100000);
     pos.y  += (((float)yvel * (float)(timeDiff/10))/100000);
 
@@ -269,7 +276,7 @@ void Rover5::normalize4(int16_t nums[4], int16_t maximum) {
     if (highest <= maximum) return;
 
     for (uint8_t i=0; i<4; i++) {
-        nums[i] = (int16_t)(( (int32_t)nums[i] * (long)maximum)/(long)highest);
+        nums[i] = (int16_t)(( (int32_t)nums[i] * (int32_t)maximum)/(int32_t)highest);
     }
 }
 
