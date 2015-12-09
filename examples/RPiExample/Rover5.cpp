@@ -44,6 +44,7 @@ void Rover5::begin() {
     instances.push_back(this);
 }
 void Rover5::end() {
+    move(0,0);
     sendI2C();
     close(i2cfile);
 }

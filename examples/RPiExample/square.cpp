@@ -37,7 +37,6 @@ state_func(MoveRight, [] {
 });
 
 state_func(Done, [] {
-    bot.move(0,0);
     bot.end();
     stop_state_machine();
 });
