@@ -175,7 +175,7 @@ _SOTR_Private::register_interrupt_func::register_interrupt_func(
         std::function<void()> func) {
     interrupt_fns().push_back(make_pair(trigger, func));
 }
-// TODO
+
 _SOTR_Private::register_global_func::register_global_func(
         GlobalFuncStart en,
         const std::vector<std::function<void()>>& fns) {

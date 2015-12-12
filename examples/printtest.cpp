@@ -38,7 +38,7 @@ state_func(Start, [] {
     noecho();
     set_state(GoNorth);
     printw("Pressing = triggers an interrupt\n");
-    });
+});
 
 state_func(GoNorth, [] {
     every(1s) {
